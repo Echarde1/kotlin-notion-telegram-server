@@ -24,9 +24,9 @@ private val FEES_DATABASE_ID = dotEnv.getVariable("FEES_DATABASE_ID")
 
 suspend fun main(args: Array<String>) {
     val port = System.getenv("PORT")?.toInt() ?: 23567
-    /*embeddedServer(Netty, port = port) {
+    embeddedServer(Netty, port = port) {
         configureRouting()
-    }.start(wait = true)*/
+    }.start(wait = true)
     val telegramBotToken = TELEGRAM_BOT_TOKEN
     bot {
         token = telegramBotToken
