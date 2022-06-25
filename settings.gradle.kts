@@ -1,3 +1,2 @@
-
-rootProject.name = "KotlinServer"
+rootProject.name = "kotlin-notion-telegram-server"
 

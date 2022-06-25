@@ -1,1 +1,1 @@
-web: java -jar build/libs/KotlinServer-1.0-SNAPSHOT-all.jar
+web: ./build/install/kotlin-notion-telegram-server/bin/kotlin-notion-telegram-server
