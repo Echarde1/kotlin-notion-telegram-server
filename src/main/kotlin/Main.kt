@@ -1,22 +1,15 @@
-import com.github.kotlintelegrambot.bot
-import com.github.kotlintelegrambot.dispatch
-import com.github.kotlintelegrambot.dispatcher.text
-import com.github.kotlintelegrambot.entities.ChatId
 import io.github.cdimascio.dotenv.dotenv
 import io.ktor.application.*
-import io.ktor.server.engine.*
-import io.ktor.server.netty.*
 import io.ktor.response.*
 import io.ktor.routing.*
-import org.jraf.klibnotion.client.Authentication
-import org.jraf.klibnotion.client.ClientConfiguration
-import org.jraf.klibnotion.client.NotionClient
-import org.jraf.klibnotion.model.base.reference.DatabaseReference
-import org.jraf.klibnotion.model.property.value.PropertyValueList
-import kotlin.random.Random
+import io.ktor.server.engine.*
+import io.ktor.server.netty.*
 
-private val dotEnv = dotenv()
-private val TELEGRAM_BOT_TOKEN = dotEnv.get("TELEGRAM_BOT_TOKEN") ?: System.getenv("TELEGRAM_BOT_TOKEN")
+private val dotEnv = dotenv {
+    ignoreIfMissing = true
+}
+private val TELEGRAM_BOT_TOKEN =
+    dotEnv.get("TELEGRAM_BOT_TOKEN") ?: System.getenv("TELEGRAM_BOT_TOKEN")
 private val NOTION_TOKEN = dotEnv.get("NOTION_TOKEN") ?: System.getenv("NOTION_TOKEN")
 private val FEES_DATABASE_ID = dotEnv.get("FEES_DATABASE_ID") ?: System.getenv("FEES_DATABASE_ID")
 
