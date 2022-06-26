@@ -18,7 +18,6 @@ import org.jraf.klibnotion.model.page.Page
 import org.jraf.klibnotion.model.property.value.PropertyValueList
 import org.jraf.klibnotion.model.property.value.TitlePropertyValue
 import org.jraf.klibnotion.model.richtext.RichTextList
-import kotlin.random.Random
 
 private val dotEnv = dotenv {
     ignoreIfMissing = true
@@ -39,9 +38,6 @@ val notionClient by lazy {
 
 suspend fun main(args: Array<String>) {
     val port = System.getenv("PORT")?.toInt() ?: 23567
-    /*embeddedServer(Netty, port = port) {
-        configureRouting()
-    }.start(wait = true)*/
     val telegramBotToken = TELEGRAM_BOT_TOKEN
     bot {
         token = telegramBotToken
@@ -99,6 +95,9 @@ suspend fun main(args: Array<String>) {
             }
         }
     }.startPolling()
+    embeddedServer(Netty, port = port) {
+        configureRouting()
+    }.start(wait = true)
 }
 
 fun Application.configureRouting() {
