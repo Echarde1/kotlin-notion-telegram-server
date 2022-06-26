@@ -33,9 +33,9 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:$logback_version")
     implementation("io.github.kotlin-telegram-bot.kotlin-telegram-bot:telegram:$telegram_bot_sdk_version")
 
-    // Официальный и неофициальный SDK для Notion. В неофициальном реализовано значительно
-    // больше функционала
-    implementation("com.petersamokhin.notionsdk:notionsdk:$notion_sdk_version")
+    // Официальный и неофициальный SDK для Notion
+//    implementation("com.petersamokhin.notionsdk:notionsdk:$notion_sdk_version")
+    // В неофициальном реализовано значительно больше функционала
     implementation("org.jraf:klibnotion:1.11.0")
 
     implementation("io.github.cdimascio:dotenv-kotlin:6.3.1")
