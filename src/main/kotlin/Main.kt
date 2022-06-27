@@ -52,13 +52,22 @@ suspend fun main(args: Array<String>): Unit = runBlocking {
         dispatch {
             text {
                 logger.info("Processing text: $text")
-                runBlocking(Dispatchers.IO + CoroutineExceptionHandler { _, throwable ->
+                /*runBlocking(Dispatchers.IO + CoroutineExceptionHandler { _, throwable ->
                     logger.error("Ошибка в корутине: ${throwable.message}")
                 }) {
-                    /*logger.info("In runBlocking")
+                    logger.info("In runBlocking")
                     val (name: String, quantity) = text.split(" ")
                         .run {
-                            take(lastIndex).reduce(operation = { acc, it -> "$acc $it " }).trim() to last()
+                            if (isEmpty() || size == 1) {
+                                bot.sendMessage(
+                                    chatId = ChatId.fromId(message.chat.id),
+                                    text = "Неправильный формат записи. Указали имя и количество через пробел?"
+                                )
+                                return@runBlocking
+                            } else {
+                                take(lastIndex).reduce(operation = { acc, it -> "$acc $it " })
+                                    .trim() to last()
+                            }
                         }
                     logger.info("Searching name: $name and quantity: $quantity")
                     logger.info("start fetching data from grocery DB")
@@ -69,9 +78,9 @@ suspend fun main(args: Array<String>): Unit = runBlocking {
                         chatId = ChatId.fromId(message.chat.id),
                         text = foo().toString()
                     )
-                    logger.info("Finished runBlocking")*/
-                    processProduct()
-                }
+                    logger.info("Finished runBlocking")
+                }*/
+                processProduct()
             }
         }
     }.startPolling()
@@ -95,7 +104,16 @@ private fun TextHandlerEnvironment.processProduct(): Unit = runBlocking(
 ) {
     val (name: String, quantity) = text.split(" ")
         .run {
-            take(lastIndex).reduce(operation = { acc, it -> "$acc $it " }).trim() to last()
+            if (isEmpty() || size == 1) {
+                bot.sendMessage(
+                    chatId = ChatId.fromId(message.chat.id),
+                    text = "Неправильный формат записи. Указали имя и количество через пробел?"
+                )
+                return@runBlocking
+            } else {
+                take(lastIndex).reduce(operation = { acc, it -> "$acc $it " })
+                    .trim() to last()
+            }
         }
     logger.info("Searching name: $name and quantity: $quantity")
     logger.info("start fetching data from grocery DB")
