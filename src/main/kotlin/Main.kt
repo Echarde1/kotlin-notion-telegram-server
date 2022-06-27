@@ -24,11 +24,11 @@ import org.jraf.klibnotion.model.richtext.RichTextList
 private val dotEnv = dotenv {
     ignoreIfMissing = true
 }
-private val TELEGRAM_BOT_TOKEN = dotEnv.getVariable("TELEGRAM_BOT_TOKEN")
-private val NOTION_TOKEN = dotEnv.getVariable("NOTION_TOKEN")
-private val FEES_DATABASE_ID = dotEnv.getVariable("FEES_DATABASE_ID")
-private val PRODUCTS_DATABASE_ID = dotEnv.getVariable("PRODUCTS_DATABASE_ID")
-private val NEED_TO_BUY_DATABASE_ID = dotEnv.getVariable("NEED_TO_BUY_DATABASE_ID")
+private val TELEGRAM_BOT_TOKEN = dotEnv.requireVariable("TELEGRAM_BOT_TOKEN")
+private val NOTION_TOKEN = dotEnv.requireVariable("NOTION_TOKEN")
+private val FEES_DATABASE_ID = dotEnv.requireVariable("FEES_DATABASE_ID")
+private val PRODUCTS_DATABASE_ID = dotEnv.requireVariable("PRODUCTS_DATABASE_ID")
+private val NEED_TO_BUY_DATABASE_ID = dotEnv.requireVariable("NEED_TO_BUY_DATABASE_ID")
 
 val notionClient by lazy {
     NotionClient.newInstance(
@@ -45,10 +45,7 @@ suspend fun main(args: Array<String>) {
         token = telegramBotToken
         dispatch {
             text {
-                bot.sendMessage(
-                    chatId = ChatId.fromId(message.chat.id),
-                    text = text
-                )
+                processProduct()
             }
         }
     }.startPolling()
@@ -113,7 +110,7 @@ fun Application.configureRouting() {
 
     routing {
         get("/") {
-            call.respondText("Hello, World!")
+            difficultHomePage()
         }
     }
 }
