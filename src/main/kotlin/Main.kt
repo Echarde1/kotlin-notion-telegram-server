@@ -10,6 +10,7 @@ import io.ktor.routing.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.util.pipeline.*
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.jraf.klibnotion.client.Authentication
@@ -21,6 +22,7 @@ import org.jraf.klibnotion.model.property.value.PropertyValueList
 import org.jraf.klibnotion.model.property.value.TitlePropertyValue
 import org.jraf.klibnotion.model.richtext.RichTextList
 import org.slf4j.LoggerFactory
+import kotlin.math.log
 
 private val dotEnv = dotenv {
     ignoreIfMissing = true
@@ -61,13 +63,17 @@ suspend fun main(args: Array<String>) {
 }
 
 private fun TextHandlerEnvironment.processProduct() {
-    runBlocking(Dispatchers.IO) {
-        val groceryDb = notionClient.databases.queryDatabase(PRODUCTS_DATABASE_ID)
-        val needToBuyDb = notionClient.databases.queryDatabase(NEED_TO_BUY_DATABASE_ID)
+    runBlocking(Dispatchers.IO + CoroutineExceptionHandler { _, throwable ->
+        logger.error("Ошибка в корутине: ${throwable.message}")
+    }) {
         val (name: String, quantity) = text.split(" ")
             .run {
                 take(lastIndex).reduce(operation = { acc, it -> "$acc $it " }).trim() to last()
             }
+        logger.info("Searching name: $name and quantity: $quantity")
+        logger.info("start fetching data from grocery DB")
+        val groceryDb = notionClient.databases.queryDatabase(PRODUCTS_DATABASE_ID)
+//        val needToBuyDb = notionClient.databases.queryDatabase(NEED_TO_BUY_DATABASE_ID)
         logger.info("fetched data from grocery DB")
         val resultText: String = groceryDb
             .results
