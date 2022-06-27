@@ -86,23 +86,33 @@ private fun TextHandlerEnvironment.processProduct() {
                 if (resultFromGrocery.isEmpty()) {
                     "Нет такого продукта в базе. Добавить в общую базу продуктов?"
                 } else {
-                    notionClient
-                        .pages
-                        .createPage(
-                            parentDatabase = DatabaseReference(id = NEED_TO_BUY_DATABASE_ID),
-                            properties = PropertyValueList()
-                                .title(
-                                    "Name",
-                                    richTextList = RichTextList()
-                                        .pageMention(pageId = resultFromGrocery.first().page.id)
-                                )
-                                .number("Quantity", quantity.toInt())
-                                .relation(
-                                    idOrName = "Products",
-                                    resultFromGrocery.first().page.id
-                                )
+                    runCatching {
+                        notionClient
+                            .pages
+                            .createPage(
+                                parentDatabase = DatabaseReference(id = NEED_TO_BUY_DATABASE_ID),
+                                properties = PropertyValueList()
+                                    .title(
+                                        "Name",
+                                        richTextList = RichTextList()
+                                            .pageMention(pageId = resultFromGrocery.first().page.id)
+                                    )
+                                    .number("Quantity", quantity.toInt())
+                                    .relation(
+                                        idOrName = "Products",
+                                        resultFromGrocery.first().page.id
+                                    )
+                            )
+                    }
+                        .fold(
+                            onSuccess = {
+                                "Добавили (наверное): $name $quantity"
+                            },
+                            onFailure = {
+                                logger.error(it.message)
+                                "Чета ошибка при запросе в Ноушен"
+                            }
                         )
-                    "Добавили (наверное): $name $quantity"
                 }
             }
 
