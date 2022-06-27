@@ -5,9 +5,11 @@ val kotlin_version: String by project
 val logback_version: String by project
 val notion_sdk_version: String by project
 val telegram_bot_sdk_version: String by project
+val arrow_version: String by project
 
 plugins {
     kotlin("jvm") version "1.7.0"
+    id("com.google.devtools.ksp") version "1.7.0-1.0.6"
     application
 }
 
@@ -32,6 +34,11 @@ dependencies {
     implementation("io.ktor:ktor-server-netty:$ktor_version")
     implementation("ch.qos.logback:logback-classic:$logback_version")
     implementation("io.github.kotlin-telegram-bot.kotlin-telegram-bot:telegram:$telegram_bot_sdk_version")
+
+    implementation("io.arrow-kt:arrow-core:$arrow_version")
+    implementation("io.arrow-kt:arrow-optics:$arrow_version")
+    implementation("io.arrow-kt:arrow-fx-coroutines:$arrow_version")
+    ksp("io.arrow-kt:arrow-optics-ksp-plugin:$arrow_version")
 
     // Официальный и неофициальный SDK для Notion
 //    implementation("com.petersamokhin.notionsdk:notionsdk:$notion_sdk_version")
