@@ -22,7 +22,6 @@ import org.jraf.klibnotion.model.property.value.PropertyValueList
 import org.jraf.klibnotion.model.property.value.TitlePropertyValue
 import org.jraf.klibnotion.model.richtext.RichTextList
 import org.slf4j.LoggerFactory
-import kotlin.math.log
 
 private val dotEnv = dotenv {
     ignoreIfMissing = true
@@ -45,7 +44,7 @@ private val logger by lazy {
     LoggerFactory.getLogger("Main")
 }
 
-suspend fun main(args: Array<String>) {
+fun main(args: Array<String>) = runBlocking {
     val port = System.getenv("PORT")?.toInt() ?: 23567
     val telegramBotToken = TELEGRAM_BOT_TOKEN
     bot {
@@ -53,7 +52,71 @@ suspend fun main(args: Array<String>) {
         dispatch {
             text {
                 logger.info("Processing text: $text")
-                processProduct()
+                runBlocking(Dispatchers.IO + CoroutineExceptionHandler { _, throwable ->
+                    logger.error("Ошибка в корутине: ${throwable.message}")
+                }) {
+                    val (name: String, quantity) = text.split(" ")
+                        .run {
+                            take(lastIndex).reduce(operation = { acc, it -> "$acc $it " })
+                                .trim() to last()
+                        }
+                    logger.info("Searching name: $name and quantity: $quantity")
+                    logger.info("start fetching data from grocery DB")
+                    val groceryDb = notionClient.databases.queryDatabase(PRODUCTS_DATABASE_ID)
+//        val needToBuyDb = notionClient.databases.queryDatabase(NEED_TO_BUY_DATABASE_ID)
+                    logger.info("fetched data from grocery DB")
+                    val resultText: String = groceryDb
+                        .results
+                        .map {
+                            PageAndTitlePropertyValue(
+                                it, it.propertyValues.filterIsInstance<TitlePropertyValue>().first()
+                            )
+                        }
+                        .filter {
+                            it.titlePropertyValue.value.plainText.equals(
+                                name,
+                                ignoreCase = true
+                            )
+                        }
+                        .let { resultFromGrocery ->
+                            if (resultFromGrocery.isEmpty()) {
+                                "Нет такого продукта в базе. Добавить в общую базу продуктов?"
+                            } else {
+                                runCatching {
+                                    notionClient
+                                        .pages
+                                        .createPage(
+                                            parentDatabase = DatabaseReference(id = NEED_TO_BUY_DATABASE_ID),
+                                            properties = PropertyValueList()
+                                                .title(
+                                                    "Name",
+                                                    richTextList = RichTextList()
+                                                        .pageMention(pageId = resultFromGrocery.first().page.id)
+                                                )
+                                                .number("Quantity", quantity.toInt())
+                                                .relation(
+                                                    idOrName = "Products",
+                                                    resultFromGrocery.first().page.id
+                                                )
+                                        )
+                                }
+                                    .fold(
+                                        onSuccess = {
+                                            "Добавили (наверное): $name $quantity"
+                                        },
+                                        onFailure = {
+                                            logger.error(it.message)
+                                            "Чета ошибка при запросе в Ноушен"
+                                        }
+                                    )
+                            }
+                        }
+
+                    bot.sendMessage(
+                        chatId = ChatId.fromId(message.chat.id),
+                        text = resultText
+                    )
+                }
             }
         }
     }.startPolling()
@@ -62,7 +125,7 @@ suspend fun main(args: Array<String>) {
     }.start(wait = true)
 }
 
-private fun TextHandlerEnvironment.processProduct() {
+private suspend fun TextHandlerEnvironment.processProduct() {
     runBlocking(Dispatchers.IO + CoroutineExceptionHandler { _, throwable ->
         logger.error("Ошибка в корутине: ${throwable.message}")
     }) {
