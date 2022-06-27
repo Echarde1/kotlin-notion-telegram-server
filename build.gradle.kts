@@ -7,7 +7,7 @@ val notion_sdk_version: String by project
 val telegram_bot_sdk_version: String by project
 
 plugins {
-    kotlin("jvm") version "1.6.10"
+    kotlin("jvm") version "1.6.20"
     application
 }
 
@@ -42,7 +42,8 @@ dependencies {
 
     testImplementation(kotlin("test"))
     testImplementation("io.ktor:ktor-server-tests:$ktor_version")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
+    // Не может определить версию этой либы с котлином 1.7.0
+//    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
 }
 
 tasks.test {
@@ -51,6 +52,10 @@ tasks.test {
 
 tasks.withType<KotlinCompile> {
     kotlinOptions.jvmTarget = "1.8"
+}
+
+tasks.withType(KotlinCompile::class).all {
+    kotlinOptions.freeCompilerArgs = listOf("-Xcontext-receivers")
 }
 
 application {

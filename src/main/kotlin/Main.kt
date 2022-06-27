@@ -26,23 +26,21 @@ import org.slf4j.LoggerFactory
 private val dotEnv = dotenv {
     ignoreIfMissing = true
 }
+val FEES_DATABASE_ID = dotEnv.requireVariable("FEES_DATABASE_ID")
+val PRODUCTS_DATABASE_ID = dotEnv.requireVariable("PRODUCTS_DATABASE_ID")
+val NEED_TO_BUY_DATABASE_ID = dotEnv.requireVariable("NEED_TO_BUY_DATABASE_ID")
 private val TELEGRAM_BOT_TOKEN = dotEnv.requireVariable("TELEGRAM_BOT_TOKEN")
 private val NOTION_TOKEN = dotEnv.requireVariable("NOTION_TOKEN")
-private val FEES_DATABASE_ID = dotEnv.requireVariable("FEES_DATABASE_ID")
-private val PRODUCTS_DATABASE_ID = dotEnv.requireVariable("PRODUCTS_DATABASE_ID")
-private val NEED_TO_BUY_DATABASE_ID = dotEnv.requireVariable("NEED_TO_BUY_DATABASE_ID")
 
-private val notionClient by lazy {
+val notionClient by lazy {
     NotionClient.newInstance(
         ClientConfiguration(
             Authentication(NOTION_TOKEN)
         )
     )
 }
-
-private val logger by lazy {
-    LoggerFactory.getLogger("Main")
-}
+val logger by lazy { LoggerFactory.getLogger("Main") }
+private val processProductUseCase by lazy { ProcessProductUseCase() }
 
 suspend fun main(args: Array<String>): Unit = runBlocking {
     val port = System.getenv("PORT")?.toInt() ?: 23567
@@ -52,89 +50,15 @@ suspend fun main(args: Array<String>): Unit = runBlocking {
         dispatch {
             text {
                 logger.info("Processing text: $text")
-                processProduct()
+                runBlockingIO {
+                    processProductUseCase.runCommand()
+                }
             }
         }
     }.startPolling()
     embeddedServer(Netty, port = port) {
         configureRouting()
     }.start(wait = true)
-}
-
-private fun TextHandlerEnvironment.processProduct(): Unit = runBlocking(
-    Dispatchers.IO + CoroutineExceptionHandler { _, throwable ->
-        logger.error("Ошибка в корутине: ${throwable.message}")
-    }
-) {
-    val (name: String, quantity) = text.split(" ")
-        .run {
-            if (isEmpty() || size == 1) {
-                bot.sendMessage(
-                    chatId = ChatId.fromId(message.chat.id),
-                    text = "Неправильный формат записи. Указали имя и количество через пробел?"
-                )
-                return@runBlocking
-            } else {
-                take(lastIndex).reduce(operation = { acc, it -> "$acc $it " })
-                    .trim() to last()
-            }
-        }
-    logger.info("Searching name: $name and quantity: $quantity")
-    logger.info("start fetching data from grocery DB")
-    val groceryDb = notionClient.databases.queryDatabase(PRODUCTS_DATABASE_ID)
-//        val needToBuyDb = notionClient.databases.queryDatabase(NEED_TO_BUY_DATABASE_ID)
-    logger.info("fetched data from grocery DB")
-    val resultText: String = groceryDb
-        .results
-        .map {
-            PageAndTitlePropertyValue(
-                it, it.propertyValues.filterIsInstance<TitlePropertyValue>().first()
-            )
-        }
-        .filter {
-            it.titlePropertyValue.value.plainText.equals(
-                name,
-                ignoreCase = true
-            )
-        }
-        .let { resultFromGrocery ->
-            if (resultFromGrocery.isEmpty()) {
-                "Нет такого продукта в базе. Добавить в общую базу продуктов?"
-            } else {
-                runCatching {
-                    notionClient
-                        .pages
-                        .createPage(
-                            parentDatabase = DatabaseReference(id = NEED_TO_BUY_DATABASE_ID),
-                            properties = PropertyValueList()
-                                .title(
-                                    "Name",
-                                    richTextList = RichTextList()
-                                        .pageMention(pageId = resultFromGrocery.first().page.id)
-                                )
-                                .number("Quantity", quantity.toInt())
-                                .relation(
-                                    idOrName = "Products",
-                                    resultFromGrocery.first().page.id
-                                )
-                        )
-                }
-                    .fold(
-                        onSuccess = {
-                            "Добавили (наверное): $name $quantity"
-                        },
-                        onFailure = {
-                            logger.error(it.message)
-                            "Чета ошибка при запросе в Ноушен"
-                        }
-                    )
-            }
-        }
-
-    bot.sendMessage(
-        chatId = ChatId.fromId(message.chat.id),
-        text = resultText
-    )
 }
 
 fun Application.configureRouting() {
