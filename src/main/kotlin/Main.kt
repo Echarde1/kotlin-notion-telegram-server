@@ -52,34 +52,6 @@ suspend fun main(args: Array<String>): Unit = runBlocking {
         dispatch {
             text {
                 logger.info("Processing text: $text")
-                /*runBlocking(Dispatchers.IO + CoroutineExceptionHandler { _, throwable ->
-                    logger.error("Ошибка в корутине: ${throwable.message}")
-                }) {
-                    logger.info("In runBlocking")
-                    val (name: String, quantity) = text.split(" ")
-                        .run {
-                            if (isEmpty() || size == 1) {
-                                bot.sendMessage(
-                                    chatId = ChatId.fromId(message.chat.id),
-                                    text = "Неправильный формат записи. Указали имя и количество через пробел?"
-                                )
-                                return@runBlocking
-                            } else {
-                                take(lastIndex).reduce(operation = { acc, it -> "$acc $it " })
-                                    .trim() to last()
-                            }
-                        }
-                    logger.info("Searching name: $name and quantity: $quantity")
-                    logger.info("start fetching data from grocery DB")
-                    val groceryDb = notionClient.databases.queryDatabase(PRODUCTS_DATABASE_ID)
-//        val needToBuyDb = notionClient.databases.queryDatabase(NEED_TO_BUY_DATABASE_ID)
-                    logger.info("fetched data from grocery DB")
-                    bot.sendMessage(
-                        chatId = ChatId.fromId(message.chat.id),
-                        text = foo().toString()
-                    )
-                    logger.info("Finished runBlocking")
-                }*/
                 processProduct()
             }
         }
@@ -87,14 +59,6 @@ suspend fun main(args: Array<String>): Unit = runBlocking {
     embeddedServer(Netty, port = port) {
         configureRouting()
     }.start(wait = true)
-}
-
-private suspend fun foo(): Int {
-    var r = 0
-    for (i in 1..100_000) {
-        r += i * i
-    }
-    return r
 }
 
 private fun TextHandlerEnvironment.processProduct(): Unit = runBlocking(
@@ -174,7 +138,6 @@ private fun TextHandlerEnvironment.processProduct(): Unit = runBlocking(
 }
 
 fun Application.configureRouting() {
-
     routing {
         get("/") {
             difficultHomePage()
@@ -209,3 +172,11 @@ private suspend fun PipelineContext<Unit, ApplicationCall>.difficultHomePage() {
 data class PageAndTitlePropertyValue(
     val page: Page, val titlePropertyValue: TitlePropertyValue
 )
+
+private suspend fun foo(): Int {
+    var r = 0
+    for (i in 1..100_000) {
+        r += i * i
+    }
+    return r
+}
