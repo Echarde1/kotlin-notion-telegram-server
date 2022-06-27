@@ -56,6 +56,15 @@ suspend fun main(args: Array<String>): Unit = runBlocking {
                     logger.error("Ошибка в корутине: ${throwable.message}")
                 }) {
                     logger.info("In runBlocking")
+                    val (name: String, quantity) = text.split(" ")
+                        .run {
+                            take(lastIndex).reduce(operation = { acc, it -> "$acc $it " }).trim() to last()
+                        }
+                    logger.info("Searching name: $name and quantity: $quantity")
+                    logger.info("start fetching data from grocery DB")
+                    val groceryDb = notionClient.databases.queryDatabase(PRODUCTS_DATABASE_ID)
+//        val needToBuyDb = notionClient.databases.queryDatabase(NEED_TO_BUY_DATABASE_ID)
+                    logger.info("fetched data from grocery DB")
                     bot.sendMessage(
                         chatId = ChatId.fromId(message.chat.id),
                         text = foo().toString()
