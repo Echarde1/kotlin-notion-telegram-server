@@ -20,6 +20,7 @@ import org.jraf.klibnotion.model.page.Page
 import org.jraf.klibnotion.model.property.value.PropertyValueList
 import org.jraf.klibnotion.model.property.value.TitlePropertyValue
 import org.jraf.klibnotion.model.richtext.RichTextList
+import org.slf4j.LoggerFactory
 
 private val dotEnv = dotenv {
     ignoreIfMissing = true
@@ -30,12 +31,16 @@ private val FEES_DATABASE_ID = dotEnv.requireVariable("FEES_DATABASE_ID")
 private val PRODUCTS_DATABASE_ID = dotEnv.requireVariable("PRODUCTS_DATABASE_ID")
 private val NEED_TO_BUY_DATABASE_ID = dotEnv.requireVariable("NEED_TO_BUY_DATABASE_ID")
 
-val notionClient by lazy {
+private val notionClient by lazy {
     NotionClient.newInstance(
         ClientConfiguration(
             Authentication(NOTION_TOKEN)
         )
     )
+}
+
+private val logger by lazy {
+    LoggerFactory.getLogger("Main")
 }
 
 suspend fun main(args: Array<String>) {
@@ -45,6 +50,7 @@ suspend fun main(args: Array<String>) {
         token = telegramBotToken
         dispatch {
             text {
+                logger.info("Processing text: $text")
                 processProduct()
             }
         }
@@ -62,6 +68,7 @@ private fun TextHandlerEnvironment.processProduct() {
             .run {
                 take(lastIndex).reduce(operation = { acc, it -> "$acc $it " }).trim() to last()
             }
+        logger.info("fetched data from grocery DB")
         val resultText: String = groceryDb
             .results
             .map {
