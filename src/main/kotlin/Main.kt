@@ -55,7 +55,7 @@ suspend fun main(args: Array<String>): Unit = runBlocking {
                 runBlocking(Dispatchers.IO + CoroutineExceptionHandler { _, throwable ->
                     logger.error("Ошибка в корутине: ${throwable.message}")
                 }) {
-                    logger.info("In runBlocking")
+                    /*logger.info("In runBlocking")
                     val (name: String, quantity) = text.split(" ")
                         .run {
                             take(lastIndex).reduce(operation = { acc, it -> "$acc $it " }).trim() to last()
@@ -69,7 +69,8 @@ suspend fun main(args: Array<String>): Unit = runBlocking {
                         chatId = ChatId.fromId(message.chat.id),
                         text = foo().toString()
                     )
-                    logger.info("Finished runBlocking")
+                    logger.info("Finished runBlocking")*/
+                    processProduct()
                 }
             }
         }
@@ -87,7 +88,7 @@ private suspend fun foo(): Int {
     return r
 }
 
-private fun TextHandlerEnvironment.processProduct() = runBlocking(
+private fun TextHandlerEnvironment.processProduct(): Unit = runBlocking(
     Dispatchers.IO + CoroutineExceptionHandler { _, throwable ->
         logger.error("Ошибка в корутине: ${throwable.message}")
     }
