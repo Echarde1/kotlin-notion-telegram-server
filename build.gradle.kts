@@ -7,7 +7,7 @@ val notion_sdk_version: String by project
 val telegram_bot_sdk_version: String by project
 
 plugins {
-    kotlin("jvm") version "1.6.20"
+    kotlin("jvm") version "1.7.0"
     application
 }
 
