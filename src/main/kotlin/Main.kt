@@ -44,7 +44,7 @@ private val logger by lazy {
     LoggerFactory.getLogger("Main")
 }
 
-fun main(args: Array<String>) = runBlocking {
+suspend fun main(args: Array<String>): Unit = runBlocking {
     val port = System.getenv("PORT")?.toInt() ?: 23567
     val telegramBotToken = TELEGRAM_BOT_TOKEN
     bot {
@@ -55,67 +55,12 @@ fun main(args: Array<String>) = runBlocking {
                 runBlocking(Dispatchers.IO + CoroutineExceptionHandler { _, throwable ->
                     logger.error("Ошибка в корутине: ${throwable.message}")
                 }) {
-                    val (name: String, quantity) = text.split(" ")
-                        .run {
-                            take(lastIndex).reduce(operation = { acc, it -> "$acc $it " })
-                                .trim() to last()
-                        }
-                    logger.info("Searching name: $name and quantity: $quantity")
-                    logger.info("start fetching data from grocery DB")
-                    val groceryDb = notionClient.databases.queryDatabase(PRODUCTS_DATABASE_ID)
-//        val needToBuyDb = notionClient.databases.queryDatabase(NEED_TO_BUY_DATABASE_ID)
-                    logger.info("fetched data from grocery DB")
-                    val resultText: String = groceryDb
-                        .results
-                        .map {
-                            PageAndTitlePropertyValue(
-                                it, it.propertyValues.filterIsInstance<TitlePropertyValue>().first()
-                            )
-                        }
-                        .filter {
-                            it.titlePropertyValue.value.plainText.equals(
-                                name,
-                                ignoreCase = true
-                            )
-                        }
-                        .let { resultFromGrocery ->
-                            if (resultFromGrocery.isEmpty()) {
-                                "Нет такого продукта в базе. Добавить в общую базу продуктов?"
-                            } else {
-                                runCatching {
-                                    notionClient
-                                        .pages
-                                        .createPage(
-                                            parentDatabase = DatabaseReference(id = NEED_TO_BUY_DATABASE_ID),
-                                            properties = PropertyValueList()
-                                                .title(
-                                                    "Name",
-                                                    richTextList = RichTextList()
-                                                        .pageMention(pageId = resultFromGrocery.first().page.id)
-                                                )
-                                                .number("Quantity", quantity.toInt())
-                                                .relation(
-                                                    idOrName = "Products",
-                                                    resultFromGrocery.first().page.id
-                                                )
-                                        )
-                                }
-                                    .fold(
-                                        onSuccess = {
-                                            "Добавили (наверное): $name $quantity"
-                                        },
-                                        onFailure = {
-                                            logger.error(it.message)
-                                            "Чета ошибка при запросе в Ноушен"
-                                        }
-                                    )
-                            }
-                        }
-
+                    logger.info("In runBlocking")
                     bot.sendMessage(
                         chatId = ChatId.fromId(message.chat.id),
-                        text = resultText
+                        text = foo().toString()
                     )
+                    logger.info("Finished runBlocking")
                 }
             }
         }
@@ -125,71 +70,79 @@ fun main(args: Array<String>) = runBlocking {
     }.start(wait = true)
 }
 
-private suspend fun TextHandlerEnvironment.processProduct() {
-    runBlocking(Dispatchers.IO + CoroutineExceptionHandler { _, throwable ->
+private suspend fun foo(): Int {
+    var r = 0
+    for (i in 1..100_000) {
+        r += i * i
+    }
+    return r
+}
+
+private fun TextHandlerEnvironment.processProduct() = runBlocking(
+    Dispatchers.IO + CoroutineExceptionHandler { _, throwable ->
         logger.error("Ошибка в корутине: ${throwable.message}")
-    }) {
-        val (name: String, quantity) = text.split(" ")
-            .run {
-                take(lastIndex).reduce(operation = { acc, it -> "$acc $it " }).trim() to last()
-            }
-        logger.info("Searching name: $name and quantity: $quantity")
-        logger.info("start fetching data from grocery DB")
-        val groceryDb = notionClient.databases.queryDatabase(PRODUCTS_DATABASE_ID)
+    }
+) {
+    val (name: String, quantity) = text.split(" ")
+        .run {
+            take(lastIndex).reduce(operation = { acc, it -> "$acc $it " }).trim() to last()
+        }
+    logger.info("Searching name: $name and quantity: $quantity")
+    logger.info("start fetching data from grocery DB")
+    val groceryDb = notionClient.databases.queryDatabase(PRODUCTS_DATABASE_ID)
 //        val needToBuyDb = notionClient.databases.queryDatabase(NEED_TO_BUY_DATABASE_ID)
-        logger.info("fetched data from grocery DB")
-        val resultText: String = groceryDb
-            .results
-            .map {
-                PageAndTitlePropertyValue(
-                    it, it.propertyValues.filterIsInstance<TitlePropertyValue>().first()
-                )
-            }
-            .filter {
-                it.titlePropertyValue.value.plainText.equals(
-                    name,
-                    ignoreCase = true
-                )
-            }
-            .let { resultFromGrocery ->
-                if (resultFromGrocery.isEmpty()) {
-                    "Нет такого продукта в базе. Добавить в общую базу продуктов?"
-                } else {
-                    runCatching {
-                        notionClient
-                            .pages
-                            .createPage(
-                                parentDatabase = DatabaseReference(id = NEED_TO_BUY_DATABASE_ID),
-                                properties = PropertyValueList()
-                                    .title(
-                                        "Name",
-                                        richTextList = RichTextList()
-                                            .pageMention(pageId = resultFromGrocery.first().page.id)
-                                    )
-                                    .number("Quantity", quantity.toInt())
-                                    .relation(
-                                        idOrName = "Products",
-                                        resultFromGrocery.first().page.id
-                                    )
-                            )
-                    }
-                        .fold(
-                            onSuccess = {
-                                "Добавили (наверное): $name $quantity"
-                            },
-                            onFailure = {
-                                logger.error(it.message)
-                                "Чета ошибка при запросе в Ноушен"
-                            }
+    logger.info("fetched data from grocery DB")
+    val resultText: String = groceryDb
+        .results
+        .map {
+            PageAndTitlePropertyValue(
+                it, it.propertyValues.filterIsInstance<TitlePropertyValue>().first()
+            )
+        }
+        .filter {
+            it.titlePropertyValue.value.plainText.equals(
+                name,
+                ignoreCase = true
+            )
+        }
+        .let { resultFromGrocery ->
+            if (resultFromGrocery.isEmpty()) {
+                "Нет такого продукта в базе. Добавить в общую базу продуктов?"
+            } else {
+                runCatching {
+                    notionClient
+                        .pages
+                        .createPage(
+                            parentDatabase = DatabaseReference(id = NEED_TO_BUY_DATABASE_ID),
+                            properties = PropertyValueList()
+                                .title(
+                                    "Name",
+                                    richTextList = RichTextList()
+                                        .pageMention(pageId = resultFromGrocery.first().page.id)
+                                )
+                                .number("Quantity", quantity.toInt())
+                                .relation(
+                                    idOrName = "Products",
+                                    resultFromGrocery.first().page.id
+                                )
                         )
                 }
+                    .fold(
+                        onSuccess = {
+                            "Добавили (наверное): $name $quantity"
+                        },
+                        onFailure = {
+                            logger.error(it.message)
+                            "Чета ошибка при запросе в Ноушен"
+                        }
+                    )
             }
+        }
 
-        bot.sendMessage(
-            chatId = ChatId.fromId(message.chat.id),
-            text = resultText
-        )
-    }
+    bot.sendMessage(
+        chatId = ChatId.fromId(message.chat.id),
+        text = resultText
+    )
 }
 
 fun Application.configureRouting() {
