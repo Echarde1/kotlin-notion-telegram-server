@@ -1,4 +1,7 @@
-import arrow.core.*
+import arrow.core.Invalid
+import arrow.core.Option
+import arrow.core.Valid
+import arrow.core.Validated
 import com.github.kotlintelegrambot.dispatcher.handlers.TextHandlerEnvironment
 import com.github.kotlintelegrambot.entities.ChatId
 import org.jraf.klibnotion.model.base.reference.DatabaseReference
@@ -10,8 +13,7 @@ import org.jraf.klibnotion.model.richtext.PageMentionRichText
 import org.jraf.klibnotion.model.richtext.RichTextList
 
 class ProcessProductUseCase {
-    context(TextHandlerEnvironment)
-    suspend fun runCommand() {
+    context(TextHandlerEnvironment) suspend fun runCommand() {
         val (name: String, quantity) = prepareData()
             .fold(
                 fe = { invalidMessage ->
@@ -88,8 +90,7 @@ class ProcessProductUseCase {
         )
     }
 
-    context(TextHandlerEnvironment)
-    private suspend fun List<PageAndTitlePropertyValue>.processResultFromGrocery(
+    context(TextHandlerEnvironment) private suspend fun List<PageAndTitlePropertyValue>.processResultFromGrocery(
         quantity: String,
         needToBuyDb: ResultPage<Page>
     ) = let { resultFromProducts ->
@@ -134,11 +135,11 @@ class ProcessProductUseCase {
                 }
             },
             ifSome = { (page, _) ->
-                 val value = page
-                     .propertyValues
-                     .first { it.name == quantityKey }
-                     .value!!.toString().toDouble() + quantity.toDouble()
-                 val command = { properties: PropertyValueList ->
+                val value = page
+                    .propertyValues
+                    .first { it.name == quantityKey }
+                    .value!!.toString().toDouble() + quantity.toDouble()
+                val command = { properties: PropertyValueList ->
                     runBlockingIO {
                         pages
                             .updatePage(

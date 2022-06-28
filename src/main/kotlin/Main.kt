@@ -1,8 +1,6 @@
 import com.github.kotlintelegrambot.bot
 import com.github.kotlintelegrambot.dispatch
-import com.github.kotlintelegrambot.dispatcher.handlers.TextHandlerEnvironment
 import com.github.kotlintelegrambot.dispatcher.text
-import com.github.kotlintelegrambot.entities.ChatId
 import io.github.cdimascio.dotenv.dotenv
 import io.ktor.application.*
 import io.ktor.response.*
@@ -10,21 +8,18 @@ import io.ktor.routing.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.util.pipeline.*
-import kotlinx.coroutines.CoroutineExceptionHandler
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import org.jraf.klibnotion.client.Authentication
-import org.jraf.klibnotion.client.ClientConfiguration
-import org.jraf.klibnotion.client.NotionClient
-import org.jraf.klibnotion.model.base.reference.DatabaseReference
+import org.jraf.klibnotion.client.*
+import org.jraf.klibnotion.model.base.UuidString
+import org.jraf.klibnotion.model.block.Block
+import org.jraf.klibnotion.model.block.MutableBlockList
+import org.jraf.klibnotion.model.block.ToDoBlock
 import org.jraf.klibnotion.model.page.Page
-import org.jraf.klibnotion.model.property.value.PropertyValueList
 import org.jraf.klibnotion.model.property.value.TitlePropertyValue
 import org.jraf.klibnotion.model.richtext.RichTextList
 import org.slf4j.LoggerFactory
 
-private val dotEnv = dotenv {
+val dotEnv = dotenv {
     ignoreIfMissing = true
 }
 val FEES_DATABASE_ID = dotEnv.requireVariable("FEES_DATABASE_ID")
@@ -36,12 +31,14 @@ private val NOTION_TOKEN = dotEnv.requireVariable("NOTION_TOKEN")
 val notionClient by lazy {
     NotionClient.newInstance(
         ClientConfiguration(
-            Authentication(NOTION_TOKEN)
+            authentication = Authentication(NOTION_TOKEN),
+            httpConfiguration = HttpConfiguration(loggingLevel = HttpLoggingLevel.ALL)
         )
     )
 }
 val logger by lazy { LoggerFactory.getLogger("Main") }
 private val processProductUseCase by lazy { ProcessProductUseCase() }
+private val clearTrainingListsInteractor by lazy { ClearTrainingListsInteractor() }
 
 suspend fun main(args: Array<String>): Unit = runBlocking {
     val port = System.getenv("PORT")?.toInt() ?: 23567
@@ -65,33 +62,27 @@ suspend fun main(args: Array<String>): Unit = runBlocking {
 fun Application.configureRouting() {
     routing {
         get("/") {
-            difficultHomePage()
+            helloWorld()
+        }
+        get("/clear_gi") {
+            clearTrainingListsInteractor.clearGi()
+        }
+        get("/clear_no_gi") {
+            clearTrainingListsInteractor.clearNoGi()
+        }
+        get("/clear_need_to_buy") {
+            clearNeedToBuy()
         }
     }
 }
 
-private suspend fun PipelineContext<Unit, ApplicationCall>.difficultHomePage() {
-    val notionClient = NotionClient.newInstance(
-        ClientConfiguration(
-            Authentication(NOTION_TOKEN)
-        )
-    )
-//            val groceryDb = notionClient.databases.getDatabase(PRODUCTS_DATABASE_ID)
-    val groceryDb = notionClient.databases.queryDatabase(PRODUCTS_DATABASE_ID)
-    val needToBuyDb = notionClient.databases.queryDatabase(NEED_TO_BUY_DATABASE_ID)
-//            val database = notionClient.databases.getDatabaseList()
+private suspend fun PipelineContext<Unit, ApplicationCall>.helloWorld() {
+    call.respondText("Hello, World!")
+}
 
-    groceryDb.results.map {
-        PageAndTitlePropertyValue(
-            it, it.propertyValues.filterIsInstance<TitlePropertyValue>().first()
-        )
-    }
+private suspend fun PipelineContext<Unit, ApplicationCall>.clearNeedToBuy() {
 
-    needToBuyDb.results.forEach {
-        println(it)
-    }
-
-    call.respondText("done")
+    call.respondText("Cleared NeedToBuy DB")
 }
 
 data class PageAndTitlePropertyValue(
