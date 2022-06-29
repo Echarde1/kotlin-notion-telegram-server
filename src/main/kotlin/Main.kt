@@ -15,9 +15,11 @@ import org.jraf.klibnotion.model.block.Block
 import org.jraf.klibnotion.model.block.MutableBlockList
 import org.jraf.klibnotion.model.block.ToDoBlock
 import org.jraf.klibnotion.model.page.Page
+import org.jraf.klibnotion.model.property.value.CheckboxPropertyValue
 import org.jraf.klibnotion.model.property.value.TitlePropertyValue
 import org.jraf.klibnotion.model.richtext.RichTextList
 import org.slf4j.LoggerFactory
+import java.util.function.BiPredicate
 
 val dotEnv = dotenv {
     ignoreIfMissing = true
@@ -81,6 +83,40 @@ private suspend fun PipelineContext<Unit, ApplicationCall>.helloWorld() {
 }
 
 private suspend fun PipelineContext<Unit, ApplicationCall>.clearNeedToBuy() {
+    runCatching { notionClient.databases.queryDatabase(NEED_TO_BUY_DATABASE_ID) }
+        .fold(
+            onSuccess = { pages ->
+                pages
+                    .results
+                    .filter { page ->
+                        page.propertyValues.contains {
+                            it is CheckboxPropertyValue
+                                    && it.name == "Bought"
+                                    && it.value
+                        }
+                    }
+            },
+            onFailure = {
+                logger.error("Error querying NeedToBuy DB ${it.message}")
+                return@clearNeedToBuy
+            }
+        )
+        .also { pages ->
+            val items = pages.map { it.requireTitlePropertyValue() }
+            logger.info("Fetched and filtered NeedToBuy. Items: $items")
+        }
+        .forEach {
+            runCatching { notionClient.pages.setPageArchived(id = it.id, archived = true) }
+                .fold(
+                    onSuccess = {
+                        logger.info("Archived page id: ${it.id} and name: ${it.requireTitlePropertyValue()}")
+                    },
+                    onFailure = {
+                        logger.error("Error archiving page: ${it.message}")
+                        return@clearNeedToBuy
+                    }
+                )
+        }
 
     call.respondText("Cleared NeedToBuy DB")
 }
@@ -88,6 +124,17 @@ private suspend fun PipelineContext<Unit, ApplicationCall>.clearNeedToBuy() {
 data class PageAndTitlePropertyValue(
     val page: Page, val titlePropertyValue: TitlePropertyValue
 )
+
+private fun <T> List<T>.contains(predicate: (T) -> Boolean): Boolean {
+    return find(predicate) != null
+}
+
+private fun Page.requireTitlePropertyValue(): String? {
+    return propertyValues
+        .first { it is TitlePropertyValue }
+        .run { value as RichTextList }
+        .plainText
+}
 
 private suspend fun foo(): Int {
     var r = 0

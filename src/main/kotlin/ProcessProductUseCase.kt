@@ -33,7 +33,7 @@ class ProcessProductUseCase {
                     it
                 },
                 onFailure = {
-                    logger.error("Error fetching products DB")
+                    logger.error("Error fetching products DB ${it.message}")
                     produceMessage("Не получилось подтянуть базу Products")
                     return@runCommand
                 }
@@ -47,7 +47,7 @@ class ProcessProductUseCase {
                         it
                     },
                     onFailure = {
-                        logger.error("Error fetching needToBuy DB")
+                        logger.error("Error fetching needToBuy DB. ${it.message}")
                         produceMessage("Не получилось подтянуть базу Products")
                         return@runCommand
                     }
