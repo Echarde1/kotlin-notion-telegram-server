@@ -7,6 +7,7 @@ import com.github.kotlintelegrambot.entities.ChatId
 import org.jraf.klibnotion.model.base.reference.DatabaseReference
 import org.jraf.klibnotion.model.page.Page
 import org.jraf.klibnotion.model.pagination.ResultPage
+import org.jraf.klibnotion.model.property.value.CheckboxPropertyValue
 import org.jraf.klibnotion.model.property.value.PropertyValueList
 import org.jraf.klibnotion.model.property.value.TitlePropertyValue
 import org.jraf.klibnotion.model.richtext.PageMentionRichText
@@ -56,13 +57,14 @@ class ProcessProductUseCase {
         val resultText = productsDb
             .results
             .mapToPageAndTitle()
-            .filterEquals(name)
+            .filterEqualsOrChecked(name)
             .processResultFromGrocery(quantity, needToBuyDb)
 
         produceMessage(resultText)
     }
 
     private fun TextHandlerEnvironment.prepareData(): Validated<String, Pair<String, String>> = text
+        .trim()
         .removePunctuation()
         .split(" ")
         .run {
@@ -83,7 +85,7 @@ class ProcessProductUseCase {
         )
     }
 
-    private fun List<PageAndTitlePropertyValue>.filterEquals(name: String) = filter {
+    private fun List<PageAndTitlePropertyValue>.filterEqualsOrChecked(name: String) = filter {
         it.titlePropertyValue.value.plainText?.removePunctuation().equals(
             name,
             ignoreCase = true
@@ -120,8 +122,18 @@ class ProcessProductUseCase {
         val (resultQuantity: Double, command) = Option.fromNullable(needToBuyDb
             .results
             .mapToPageAndTitle()
-            .find { (_, title) ->
-                (title.value.richTextList.first() as PageMentionRichText).pageId == productPageId
+            .find { (page, title) ->
+                val isItemAlreadyBought = page
+                    .propertyValues
+                    .first {
+                        it.name == "Bought"
+                    }
+                    .let { it as CheckboxPropertyValue }
+                    .value
+                val shouldBuyItem = isItemAlreadyBought.not()
+                val isPageIdEqualsToProductPageId = (title.value.richTextList.first() as PageMentionRichText).pageId == productPageId
+
+                shouldBuyItem && isPageIdEqualsToProductPageId
             }
         ).fold(
             ifEmpty = {
