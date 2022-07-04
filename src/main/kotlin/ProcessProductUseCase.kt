@@ -86,7 +86,7 @@ class ProcessProductUseCase {
     }
 
     private fun List<PageAndTitlePropertyValue>.filterEqualsOrChecked(name: String) = filter {
-        it.titlePropertyValue.value.plainText?.removePunctuation().equals(
+        it.titlePropertyValue.value.plainText?.trim()?.removePunctuation().equals(
             name,
             ignoreCase = true
         )
