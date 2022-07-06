@@ -10,8 +10,8 @@ import org.jraf.klibnotion.model.richtext.RichTextList
 class ClearTrainingListsInteractor {
 
     companion object {
-        private val giPageId = PageId(dotEnv.requireVariable("GI_TRAINING_LIST_PAGE_ID"))
-        private val noGiPageId = PageId("NO_GI_TRAINING_LIST_PAGE_ID")
+        private val giPageId = PageId(dotEnv.requireVariable("GI_TRAINING_LIST_PAGE"))
+        private val noGiPageId = PageId(dotEnv.requireVariable("NO_GI_TRAINING_LIST_PAGE"))
     }
 
     @JvmInline
