@@ -1,8 +1,16 @@
+import com.fasterxml.jackson.dataformat.xml.XmlMapper
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import com.fasterxml.jackson.module.paramnames.ParameterNamesModule
 import com.github.kotlintelegrambot.bot
 import com.github.kotlintelegrambot.dispatch
 import com.github.kotlintelegrambot.dispatcher.text
 import io.github.cdimascio.dotenv.dotenv
 import io.ktor.application.*
+import io.ktor.client.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.features.logging.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.server.engine.*
@@ -10,26 +18,31 @@ import io.ktor.server.netty.*
 import io.ktor.util.pipeline.*
 import kotlinx.coroutines.runBlocking
 import org.jraf.klibnotion.client.*
-import org.jraf.klibnotion.model.base.UuidString
-import org.jraf.klibnotion.model.block.Block
-import org.jraf.klibnotion.model.block.MutableBlockList
-import org.jraf.klibnotion.model.block.ToDoBlock
 import org.jraf.klibnotion.model.page.Page
 import org.jraf.klibnotion.model.property.value.CheckboxPropertyValue
 import org.jraf.klibnotion.model.property.value.TitlePropertyValue
 import org.jraf.klibnotion.model.richtext.RichTextList
 import org.slf4j.LoggerFactory
-import java.util.function.BiPredicate
+
 
 val dotEnv = dotenv {
     ignoreIfMissing = true
 }
-val FEES_DATABASE_ID = dotEnv.requireVariable("FEES_DATABASE_ID")
-val PRODUCTS_DATABASE_ID = dotEnv.requireVariable("PRODUCTS_DATABASE_ID")
-val NEED_TO_BUY_DATABASE_ID = dotEnv.requireVariable("NEED_TO_BUY_DATABASE_ID")
-private val TELEGRAM_BOT_TOKEN = dotEnv.requireVariable("TELEGRAM_BOT_TOKEN")
-private val NOTION_TOKEN = dotEnv.requireVariable("NOTION_TOKEN")
+val PRODUCTS_DATABASE by lazy { dotEnv.requireVariable("PRODUCTS_DATABASE") }
+val NEED_TO_BUY_DATABASE by lazy { dotEnv.requireVariable("NEED_TO_BUY_DATABASE") }
+val EXPENSES_DATABASE by lazy { dotEnv.requireVariable("EXPENSES_DATABASE") }
+val REGULAR_EXPENSES_DATABASE by lazy { dotEnv.requireVariable("REGULAR_EXPENSES_DATABASE") }
 
+private val TELEGRAM_BOT_TOKEN by lazy { dotEnv.requireVariable("TELEGRAM_BOT_TOKEN") }
+private val NOTION_TOKEN by lazy { dotEnv.requireVariable("NOTION_TOKEN") }
+
+val httpClient
+    get() = HttpClient(CIO) {
+        install(Logging) {
+            logger = Logger.DEFAULT
+            level = LogLevel.ALL
+        }
+    }
 val notionClient by lazy {
     NotionClient.newInstance(
         ClientConfiguration(
@@ -38,11 +51,20 @@ val notionClient by lazy {
         )
     )
 }
+val xmlMapper by lazy {
+    XmlMapper().apply {
+        registerModule(ParameterNamesModule())
+        registerModule(Jdk8Module())
+        registerModule(JavaTimeModule())
+        registerKotlinModule()
+    }
+}
 val logger by lazy { LoggerFactory.getLogger("Main") }
 private val processProductUseCase by lazy { ProcessProductUseCase() }
+private val updateCurrenciesRateUseCase by lazy { UpdateCurrenciesRateUseCase() }
 private val clearTrainingListsInteractor by lazy { ClearTrainingListsInteractor() }
 
-suspend fun main(args: Array<String>): Unit = runBlocking {
+suspend fun main(): Unit = runBlocking {
     val port = System.getenv("PORT")?.toInt() ?: 23567
     val telegramBotToken = TELEGRAM_BOT_TOKEN
     bot {
@@ -57,11 +79,11 @@ suspend fun main(args: Array<String>): Unit = runBlocking {
         }
     }.startPolling()
     embeddedServer(Netty, port = port) {
-        configureRouting()
+        configureNotionRouting()
     }.start(wait = true)
 }
 
-fun Application.configureRouting() {
+fun Application.configureNotionRouting() {
     routing {
         get("/") {
             helloWorld()
@@ -75,6 +97,9 @@ fun Application.configureRouting() {
         get("/clear_need_to_buy") {
             clearNeedToBuy()
         }
+        get("/update_currency_rate") {
+            updateCurrenciesRateUseCase.runCommand()
+        }
     }
 }
 
@@ -83,7 +108,7 @@ private suspend fun PipelineContext<Unit, ApplicationCall>.helloWorld() {
 }
 
 private suspend fun PipelineContext<Unit, ApplicationCall>.clearNeedToBuy() {
-    runCatching { notionClient.databases.queryDatabase(NEED_TO_BUY_DATABASE_ID) }
+    runCatching { notionClient.databases.queryDatabase(NEED_TO_BUY_DATABASE) }
         .fold(
             onSuccess = { pages ->
                 pages

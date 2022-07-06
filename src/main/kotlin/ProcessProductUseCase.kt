@@ -27,7 +27,7 @@ class ProcessProductUseCase {
                 }
             )
         logger.info("start fetching data from products DB")
-        val productsDb = runCatching { notionClient.databases.queryDatabase(PRODUCTS_DATABASE_ID) }
+        val productsDb = runCatching { notionClient.databases.queryDatabase(PRODUCTS_DATABASE) }
             .fold(
                 onSuccess = {
                     logger.info("fetched data from products DB")
@@ -41,7 +41,7 @@ class ProcessProductUseCase {
             )
         logger.info("start fetching data from needToBuy DB")
         val needToBuyDb =
-            runCatching { notionClient.databases.queryDatabase(NEED_TO_BUY_DATABASE_ID) }
+            runCatching { notionClient.databases.queryDatabase(NEED_TO_BUY_DATABASE) }
                 .fold(
                     onSuccess = {
                         logger.info("fetched data from needToBuy DB")
@@ -140,7 +140,7 @@ class ProcessProductUseCase {
                 quantity.toDouble() to { properties: PropertyValueList ->
                     runBlockingIO {
                         pages.createPage(
-                            parentDatabase = DatabaseReference(id = NEED_TO_BUY_DATABASE_ID),
+                            parentDatabase = DatabaseReference(id = NEED_TO_BUY_DATABASE),
                             properties = properties
                         )
                     }
