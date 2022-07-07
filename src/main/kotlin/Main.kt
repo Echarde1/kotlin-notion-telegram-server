@@ -24,14 +24,11 @@ import org.jraf.klibnotion.model.property.value.TitlePropertyValue
 import org.jraf.klibnotion.model.richtext.RichTextList
 import org.slf4j.LoggerFactory
 
-
 val dotEnv = dotenv {
     ignoreIfMissing = true
 }
 val PRODUCTS_DATABASE by lazy { dotEnv.requireVariable("PRODUCTS_DATABASE") }
 val NEED_TO_BUY_DATABASE by lazy { dotEnv.requireVariable("NEED_TO_BUY_DATABASE") }
-val EXPENSES_DATABASE by lazy { dotEnv.requireVariable("EXPENSES_DATABASE") }
-val REGULAR_EXPENSES_DATABASE by lazy { dotEnv.requireVariable("REGULAR_EXPENSES_DATABASE") }
 
 private val TELEGRAM_BOT_TOKEN by lazy { dotEnv.requireVariable("TELEGRAM_BOT_TOKEN") }
 private val NOTION_TOKEN by lazy { dotEnv.requireVariable("NOTION_TOKEN") }
@@ -62,6 +59,7 @@ val xmlMapper by lazy {
 val logger by lazy { LoggerFactory.getLogger("Main") }
 private val processProductUseCase by lazy { ProcessProductUseCase() }
 private val updateCurrenciesRateUseCase by lazy { UpdateCurrenciesRateUseCase() }
+private val updateRegularExpensesUseCase by lazy { UpdateRegularExpensesUseCase() }
 private val clearTrainingListsInteractor by lazy { ClearTrainingListsInteractor() }
 
 suspend fun main(): Unit = runBlocking {
@@ -99,6 +97,9 @@ fun Application.configureNotionRouting() {
         }
         get("/update_currency_rate") {
             updateCurrenciesRateUseCase.runCommand()
+        }
+        get("/add_regular_expenses") {
+            updateRegularExpensesUseCase.runCommand()
         }
     }
 }

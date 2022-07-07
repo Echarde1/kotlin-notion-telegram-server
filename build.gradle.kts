@@ -44,6 +44,9 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinx_serialization_version")
 //    implementation("io.ktor:ktor-server-core-jvm:$ktor_version")
     implementation("io.ktor:ktor-server-netty:$ktor_version")
+    implementation("org.jetbrains.kotlin:kotlin-reflect:1.7.0")
+
+
     implementation("ch.qos.logback:logback-classic:$logback_version")
     implementation("io.github.kotlin-telegram-bot.kotlin-telegram-bot:telegram:$telegram_bot_sdk_version")
 
