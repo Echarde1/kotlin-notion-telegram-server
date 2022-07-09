@@ -23,6 +23,7 @@ import org.jraf.klibnotion.model.property.value.CheckboxPropertyValue
 import org.jraf.klibnotion.model.property.value.TitlePropertyValue
 import org.jraf.klibnotion.model.richtext.RichTextList
 import org.slf4j.LoggerFactory
+import regular_expenses.UpdateRegularExpensesUseCase
 
 val dotEnv = dotenv {
     ignoreIfMissing = true
