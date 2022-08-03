@@ -31,7 +31,7 @@ val dotEnv = dotenv {
 val PRODUCTS_DATABASE by lazy { dotEnv.requireVariable("PRODUCTS_DATABASE") }
 val NEED_TO_BUY_DATABASE by lazy { dotEnv.requireVariable("NEED_TO_BUY_DATABASE") }
 
-private val TELEGRAM_BOT_TOKEN by lazy { dotEnv.requireVariable("TELEGRAM_BOT_TOKEN") }
+private val GROCERIES_TELEGRAM_BOT_TOKEN by lazy { dotEnv.requireVariable("GROCERIES_TELEGRAM_BOT_TOKEN") }
 private val NOTION_TOKEN by lazy { dotEnv.requireVariable("NOTION_TOKEN") }
 
 val httpClient
@@ -65,7 +65,7 @@ private val clearTrainingListsInteractor by lazy { ClearTrainingListsInteractor(
 
 suspend fun main(): Unit = runBlocking {
     val port = System.getenv("PORT")?.toInt() ?: 23567
-    val telegramBotToken = TELEGRAM_BOT_TOKEN
+    val telegramBotToken = GROCERIES_TELEGRAM_BOT_TOKEN
     bot {
         token = telegramBotToken
         dispatch {
