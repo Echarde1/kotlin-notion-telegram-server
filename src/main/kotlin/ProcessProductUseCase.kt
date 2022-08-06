@@ -27,7 +27,7 @@ class ProcessProductUseCase {
                 }
             )
         logger.info("start fetching data from products DB")
-        val productsDb = runCatching { notionClient.databases.queryDatabase(PRODUCTS_DATABASE) }
+        val productsDb = runCatching { notionClient.databases.queryDatabase(PRODUCTS_DATABASE_KEY) }
             .fold(
                 onSuccess = {
                     logger.info("fetched data from products DB")

@@ -1,16 +1,25 @@
+package regular_expenses
+
+import RUB_TO_EUR_PAGE_KEY
+import RUB_TO_USD_PAGE_KEY
 import com.fasterxml.jackson.module.kotlin.readValue
+import dotEnv
+import httpClient
 import io.ktor.application.*
 import io.ktor.client.request.*
 import io.ktor.response.*
 import io.ktor.util.pipeline.*
+import notionClient
 import org.jraf.klibnotion.model.property.value.NumberPropertyValue
 import org.jraf.klibnotion.model.property.value.PropertyValueList
 import org.jraf.klibnotion.model.property.value.TitlePropertyValue
 import org.jraf.klibnotion.model.richtext.RichTextList
+import requireVariable
+import xmlMapper
 
 class UpdateCurrenciesRateUseCase {
-    private val RUB_TO_USD_PAGE by lazy { dotEnv.requireVariable("RUB_TO_USD_PAGE") }
-    private val RUB_TO_EUR_PAGE by lazy { dotEnv.requireVariable("RUB_TO_EUR_PAGE") }
+    private val RUB_TO_USD_PAGE by lazy { dotEnv.requireVariable(RUB_TO_USD_PAGE_KEY) }
+    private val RUB_TO_EUR_PAGE by lazy { dotEnv.requireVariable(RUB_TO_EUR_PAGE_KEY) }
 
     context(PipelineContext<Unit, ApplicationCall>) suspend fun runCommand() {
         val (dollar, eur) = httpClient

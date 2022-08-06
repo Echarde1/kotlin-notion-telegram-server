@@ -1,5 +1,7 @@
 package regular_expenses
 
+import EXPENSES_DATABASE_KEY
+import REGULAR_EXPENSES_DATABASE_KEY
 import dotEnv
 import io.ktor.application.*
 import io.ktor.response.*
@@ -18,24 +20,8 @@ val calendar: Calendar = Calendar.getInstance()
 
 class UpdateRegularExpensesUseCase {
 
-    companion object {
-        private const val PAYMENT_DATE_KEY = "Payment Date"
-        private const val DESCRIPTION_KEY = "Description"
-        private const val FINANCIAL_YEAR_KEY = "Financial Year"
-        private const val EXPENSES_TYPE_KEY = "Expenses Type"
-        private const val MONTH_KEY = "Month"
-        private const val FINAL_AMOUNT_KEY = "Final Amount ₽"
-        private const val AMOUNT_RUB_KEY = "Amount ₽"
-        private const val AMOUNT_USD_KEY = "Amount $"
-        private const val AMOUNT_EUR_KEY = "Amount €"
-        private const val USD_RATE_RELATION = "USD Rate Relation"
-        private const val EUR_RATE_RELATION = "EUR Rate Relation"
-        private const val RELATED_TO_BALANCE = "Related to Balance"
-        private const val MONEY_SOURCE = "Money Source"
-    }
-
-    private val REGULAR_EXPENSES_DATABASE by lazy { dotEnv.requireVariable("REGULAR_EXPENSES_DATABASE") }
-    private val EXPENSES_DATABASE by lazy { dotEnv.requireVariable("EXPENSES_DATABASE") }
+    private val REGULAR_EXPENSES_DATABASE by lazy { dotEnv.requireVariable(REGULAR_EXPENSES_DATABASE_KEY) }
+    private val EXPENSES_DATABASE by lazy { dotEnv.requireVariable(EXPENSES_DATABASE_KEY) }
 
     context(PipelineContext<Unit, ApplicationCall>) suspend fun runCommand() {
         addNewMonthRegularExpenses()

@@ -1,11 +1,11 @@
+import bjj.ClearTrainingListsInteractor
+import bots.ExpensesBot
+import bots.GroceriesBot
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule
-import com.github.kotlintelegrambot.bot
-import com.github.kotlintelegrambot.dispatch
-import com.github.kotlintelegrambot.dispatcher.text
 import io.github.cdimascio.dotenv.dotenv
 import io.ktor.application.*
 import io.ktor.client.*
@@ -23,16 +23,15 @@ import org.jraf.klibnotion.model.property.value.CheckboxPropertyValue
 import org.jraf.klibnotion.model.property.value.TitlePropertyValue
 import org.jraf.klibnotion.model.richtext.RichTextList
 import org.slf4j.LoggerFactory
+import regular_expenses.UpdateCurrenciesRateUseCase
 import regular_expenses.UpdateRegularExpensesUseCase
 
 val dotEnv = dotenv {
     ignoreIfMissing = true
 }
-val PRODUCTS_DATABASE by lazy { dotEnv.requireVariable("PRODUCTS_DATABASE") }
-val NEED_TO_BUY_DATABASE by lazy { dotEnv.requireVariable("NEED_TO_BUY_DATABASE") }
+val NEED_TO_BUY_DATABASE by lazy { dotEnv.requireVariable(NEED_TO_BUY_DATABASE_KEY) }
 
-private val GROCERIES_TELEGRAM_BOT_TOKEN by lazy { dotEnv.requireVariable("GROCERIES_TELEGRAM_BOT_TOKEN") }
-private val NOTION_TOKEN by lazy { dotEnv.requireVariable("NOTION_TOKEN") }
+private val NOTION_TOKEN by lazy { dotEnv.requireVariable(NOTION_TOKEN_KEY) }
 
 val httpClient
     get() = HttpClient(CIO) {
@@ -58,25 +57,14 @@ val xmlMapper by lazy {
     }
 }
 val logger by lazy { LoggerFactory.getLogger("Main") }
-private val processProductUseCase by lazy { ProcessProductUseCase() }
 private val updateCurrenciesRateUseCase by lazy { UpdateCurrenciesRateUseCase() }
 private val updateRegularExpensesUseCase by lazy { UpdateRegularExpensesUseCase() }
 private val clearTrainingListsInteractor by lazy { ClearTrainingListsInteractor() }
 
 suspend fun main(): Unit = runBlocking {
     val port = System.getenv("PORT")?.toInt() ?: 23567
-    val telegramBotToken = GROCERIES_TELEGRAM_BOT_TOKEN
-    bot {
-        token = telegramBotToken
-        dispatch {
-            text {
-                logger.info("Processing text: $text")
-                runBlockingIO {
-                    processProductUseCase.runCommand()
-                }
-            }
-        }
-    }.startPolling()
+    GroceriesBot().startPolling()
+    ExpensesBot().startPolling()
     embeddedServer(Netty, port = port) {
         configureNotionRouting()
     }.start(wait = true)

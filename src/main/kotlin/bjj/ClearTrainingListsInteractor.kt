@@ -1,17 +1,24 @@
+package bjj
+
+import GI_TRAINING_LIST_PAGE_KEY
+import NO_GI_TRAINING_LIST_PAGE_KEY
+import dotEnv
 import io.ktor.application.*
 import io.ktor.response.*
 import io.ktor.util.pipeline.*
+import notionClient
 import org.jraf.klibnotion.model.base.UuidString
 import org.jraf.klibnotion.model.block.Block
 import org.jraf.klibnotion.model.block.MutableBlockList
 import org.jraf.klibnotion.model.block.ToDoBlock
 import org.jraf.klibnotion.model.richtext.RichTextList
+import requireVariable
 
 class ClearTrainingListsInteractor {
 
     companion object {
-        private val giPageId = PageId(dotEnv.requireVariable("GI_TRAINING_LIST_PAGE"))
-        private val noGiPageId = PageId(dotEnv.requireVariable("NO_GI_TRAINING_LIST_PAGE"))
+        private val giPageId = PageId(dotEnv.requireVariable(GI_TRAINING_LIST_PAGE_KEY))
+        private val noGiPageId = PageId(dotEnv.requireVariable(NO_GI_TRAINING_LIST_PAGE_KEY))
     }
 
     @JvmInline

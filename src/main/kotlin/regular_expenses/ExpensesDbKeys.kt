@@ -1,0 +1,15 @@
+package regular_expenses
+
+const val PAYMENT_DATE_KEY = "Payment Date"
+const val DESCRIPTION_KEY = "Description"
+const val FINANCIAL_YEAR_KEY = "Financial Year"
+const val EXPENSES_TYPE_KEY = "Expenses Type"
+const val MONTH_KEY = "Month"
+const val FINAL_AMOUNT_KEY = "Final Amount ₽"
+const val AMOUNT_RUB_KEY = "Amount ₽"
+const val AMOUNT_USD_KEY = "Amount $"
+const val AMOUNT_EUR_KEY = "Amount €"
+const val USD_RATE_RELATION = "USD Rate Relation"
+const val EUR_RATE_RELATION = "EUR Rate Relation"
+const val RELATED_TO_BALANCE = "Related to Balance"
+const val MONEY_SOURCE = "Money Source"
