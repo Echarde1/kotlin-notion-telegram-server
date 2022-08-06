@@ -1,147 +1,264 @@
 package bots
 
-import EXPENSES_DATABASE_KEY
+import EXPENSES_DB
 import EXPENSES_TELEGRAM_BOT_TOKEN_KEY
+import arrow.core.Invalid
+import arrow.core.Valid
+import arrow.core.Validated
+import calendar
 import com.github.kotlintelegrambot.Bot
 import com.github.kotlintelegrambot.bot
 import com.github.kotlintelegrambot.dispatch
+import com.github.kotlintelegrambot.dispatcher.Dispatcher
 import com.github.kotlintelegrambot.dispatcher.callbackQuery
+import com.github.kotlintelegrambot.dispatcher.handlers.TextHandlerEnvironment
 import com.github.kotlintelegrambot.dispatcher.text
 import com.github.kotlintelegrambot.entities.ChatId
 import com.github.kotlintelegrambot.entities.InlineKeyboardMarkup
 import com.github.kotlintelegrambot.entities.keyboard.InlineKeyboardButton
 import com.github.kotlintelegrambot.network.fold
+import com.github.kotlintelegrambot.types.TelegramBotResult.Error.*
+import currentMonth
 import dotEnv
+import io.ktor.util.date.*
 import logger
 import notionClient
+import org.jraf.klibnotion.model.base.reference.DatabaseReference
+import org.jraf.klibnotion.model.database.Database
+import org.jraf.klibnotion.model.date.DateOrDateRange
 import org.jraf.klibnotion.model.property.spec.SelectPropertySpec
-import regular_expenses.EXPENSES_TYPE_KEY
+import org.jraf.klibnotion.model.property.value.PropertyValueList
+import regular_expenses.*
+import removePunctuation
 import requireVariable
 import runBlockingIO
+import org.jraf.klibnotion.model.date.Date as NotionDate
 
-class ExpensesBot {
+class ExpensesBot(private val expensesDb: Database) {
+    private val expensesTypes: List<String> = expensesDb
+        .propertySpecs
+        .filterIsInstance<SelectPropertySpec>()
+        .first {
+            it.name == EXPENSES_TYPE_KEY
+        }
+        .options
+        .map { it.name }
+
     private val botToken by lazy { dotEnv.requireVariable(EXPENSES_TELEGRAM_BOT_TOKEN_KEY) }
-    private val EXPENSES_DB by lazy { dotEnv.requireVariable(EXPENSES_DATABASE_KEY) }
-    private var currentMessageIdWithMarkup = 0L
+    private val expensesBuilders = mutableListOf<Expense.Builder>()
 
     private val bot: Bot = bot {
 //        logLevel = LogLevel.All()
         token = botToken
         dispatch {
-            callbackQuery("5") {
-                val chatId = callbackQuery.message?.chat?.id ?: return@callbackQuery
-                bot.sendMessage(
-                    chatId = ChatId.fromId(chatId),
-                    text = "Введите свой `email` от Шереметьево"
-                )
-            }
-            callbackQuery("4") {
-                val chatId = callbackQuery.message?.chat?.id ?: return@callbackQuery
-                bot.sendMessage(
-                    chatId = ChatId.fromId(chatId),
-                    text = "Введите свой `email` от Шереметьево"
-                )
-            }
-            callbackQuery("1") {
-                val chatId = callbackQuery.message?.chat?.id ?: return@callbackQuery
-                bot.editMessageReplyMarkup(
-                    chatId = ChatId.fromId(chatId),
-                    messageId = currentMessageIdWithMarkup,
-                    replyMarkup = InlineKeyboardMarkup.create(
-                        listOf(
-                            InlineKeyboardButton.CallbackData(text = "a", "1"),
-                            InlineKeyboardButton.CallbackData(text = "b", "2"),
-                            InlineKeyboardButton.CallbackData(text = "c", "3"),
-                            InlineKeyboardButton.CallbackData(text = "d", "4"),
-                            InlineKeyboardButton.CallbackData(text = "e", "5"),
-                            InlineKeyboardButton.CallbackData(text = "f", "6"),
-                            InlineKeyboardButton.CallbackData(text = "g", "7"),
-                            InlineKeyboardButton.CallbackData(text = "h", "8"),
-                            InlineKeyboardButton.CallbackData(text = "i", "9"),
-                            InlineKeyboardButton.CallbackData(text = "j", "10"),
-                            InlineKeyboardButton.CallbackData(text = "k", "11"),
-                            InlineKeyboardButton.CallbackData(text = "l", "12"),
-                            InlineKeyboardButton.CallbackData(text = "m", "13"),
-                            InlineKeyboardButton.CallbackData(text = "n", "14"),
-                        )
+            addCallbackQueries()
+            text {
+                logger.info("Processing expense: $text")
+
+                val (name: String, amount) = prepareData()
+                    .fold(
+                        fe = { invalidMessage ->
+                            bot.sendMessage(
+                                chatId = ChatId.fromId(message.chat.id),
+                                text = invalidMessage
+                            )
+                            return@text
+                        },
+                        fa = { (name, quantity) ->
+                            logger.info("Searching name: $name and quantity: $quantity")
+                            name to quantity
+                        }
                     )
+                val currentExpenseBuilder = Expense
+                    .Builder()
+                    .addName(name)
+                    .addAmount(amount.toDouble())
+                createInlineKeyboard()
+                bot.sendMessage(
+                    chatId = ChatId.fromId(message.chat.id),
+                    text = "Choose category for expense: $name",
+                    replyMarkup = createInlineKeyboard()
                 ).fold(
-                    response = {
-                        println(it)
+                    ifSuccess = {
+                        currentExpenseBuilder.addMessageId(it.messageId)
+                        expensesBuilders.add(currentExpenseBuilder)
                     },
-                    error = {
-                        logger.error(it.exception?.message)
+                    ifError = {
+                        when (it) {
+                            is HttpError -> logger.error(it.description)
+                            is TelegramApi -> logger.error(it.description)
+                            is InvalidResponse -> logger.error(it.body?.errorDescription)
+                            is Unknown -> logger.error(it.exception.message)
+                        }
                     }
                 )
             }
-            callbackQuery("2") {
-                val chatId = callbackQuery.message?.chat?.id ?: return@callbackQuery
-                bot.sendMessage(
-                    chatId = ChatId.fromId(chatId),
-                    text = "Труляля",
-                    replyMarkup = InlineKeyboardMarkup.create(
-                        listOf(
-                            InlineKeyboardButton.CallbackData(text = "a", "1"),
-                            InlineKeyboardButton.CallbackData(text = "b", "2"),
-                            InlineKeyboardButton.CallbackData(text = "c", "3"),
-                            InlineKeyboardButton.CallbackData(text = "d", "4"),
-                            InlineKeyboardButton.CallbackData(text = "e", "5"),
-                            InlineKeyboardButton.CallbackData(text = "f", "6"),
-                            InlineKeyboardButton.CallbackData(text = "g", "7"),
-                            InlineKeyboardButton.CallbackData(text = "h", "8"),
-                            InlineKeyboardButton.CallbackData(text = "i", "9"),
-                            InlineKeyboardButton.CallbackData(text = "j", "10"),
-                            InlineKeyboardButton.CallbackData(text = "k", "11"),
-                            InlineKeyboardButton.CallbackData(text = "l", "12"),
-                            InlineKeyboardButton.CallbackData(text = "m", "13"),
-                            InlineKeyboardButton.CallbackData(text = "n", "14"),
-                        )
-                    )
+        }
+    }
+
+    private fun createInlineKeyboard(): InlineKeyboardMarkup {
+        val buttons = expensesTypes
+            .map { s ->
+                InlineKeyboardButton.CallbackData(
+                    text = s,
+                    callbackData = s
                 )
             }
-            text {
-                logger.info("Processing text: $text")
 
-                bot.sendMessage(
-                    chatId = ChatId.fromId(message.chat.id),
-                    text = text,
-                    replyMarkup = InlineKeyboardMarkup.create(
-                        listOf(
-                            InlineKeyboardButton.CallbackData(text = "1", "1"),
-                            InlineKeyboardButton.CallbackData(text = "2", "2"),
-                            InlineKeyboardButton.CallbackData(text = "3", "3"),
-                            InlineKeyboardButton.CallbackData(text = "4", "4"),
-                            InlineKeyboardButton.CallbackData(text = "5", "5"),
-                            InlineKeyboardButton.CallbackData(text = "6", "6"),
-                            InlineKeyboardButton.CallbackData(text = "7", "7"),
-                            InlineKeyboardButton.CallbackData(text = "8", "8"),
-                            InlineKeyboardButton.CallbackData(text = "9", "9"),
-                            InlineKeyboardButton.CallbackData(text = "10", "10"),
-                            InlineKeyboardButton.CallbackData(text = "10", "11"),
-                            InlineKeyboardButton.CallbackData(text = "10", "12"),
-                            InlineKeyboardButton.CallbackData(text = "10", "13"),
-                            InlineKeyboardButton.CallbackData(text = "10", "14"),
+        val (first, second, third, fourth) = buttons
+        return InlineKeyboardMarkup.create(
+            listOf(listOf(first, second)) + listOf(listOf(third, fourth)) + buttons
+                .slice(4..buttons.lastIndex)
+                .chunked(4)
+        )
+    }
+
+    private fun Dispatcher.addCallbackQueries() {
+        expensesTypes.forEach { type ->
+            fun Bot.onError(chatId: Long) {
+                sendMessage(
+                    chatId = ChatId.fromId(chatId),
+                    text = "Не получилось создать запись о трате"
+                )
+            }
+
+            callbackQuery(type) {
+                val chatId: Long? = callbackQuery.message?.chat?.id
+                val messageId: Long? = callbackQuery.message?.messageId
+                if (chatId == null || messageId == null) {
+                    logger.error("For some reason chatId or messageId is null")
+                    return@callbackQuery
+                }
+
+                val expense: Expense = expensesBuilders
+                    .first { it.getMessageId() == callbackQuery.message?.messageId }
+                    .addType(type)
+                    .build()
+                runCatching {
+                    createNotionPage(expense, type)
+                }.fold(
+                    onSuccess = {
+                        bot.editMessageText(
+                            chatId = ChatId.fromId(chatId),
+                            messageId = messageId,
+                            text = "Добавили запись в табличку по ${expense.name} с типом $type и суммой ${expense.amount}",
+                            replyMarkup = null
+                        ).fold(
+                            response = {
+                                println(it)
+                            },
+                            error = {
+                                println(it)
+                            }
                         )
-                    )
-                ).fold(
-                    ifSuccess = { currentMessageIdWithMarkup = it.messageId },
-                    ifError = { }
+                    },
+                    onFailure = {
+                        logger.error("Error fetching products DB ${it.message}")
+                        bot.onError(chatId)
+                    }
                 )
             }
         }
     }
 
     fun startPolling() = runBlockingIO {
-//        bot.startPolling()
-        val foo = notionClient
-            .databases
-            .getDatabase(EXPENSES_DB)
-            .propertySpecs
-            .filterIsInstance<SelectPropertySpec>()
-            .first {
-                it.name == EXPENSES_TYPE_KEY
+        bot.startPolling()
+    }
+
+    private fun createNotionPage(
+        expense: Expense,
+        type: String
+    ) = runBlockingIO {
+        notionClient.pages.createPage(
+            parentDatabase = DatabaseReference(id = EXPENSES_DB),
+            properties = PropertyValueList()
+                .title(
+                    idOrName = DESCRIPTION_KEY,
+                    text = expense.name
+                )
+                .number(
+                    idOrName = FINAL_AMOUNT_KEY,
+                    number = expense.amount
+                )
+                .selectByName(
+                    idOrName = EXPENSES_TYPE_KEY,
+                    selectName = type
+                )
+                .selectByName(
+                    idOrName = MONTH_KEY,
+                    selectName = buildString {
+                        val monthName = Month.from(currentMonth).name
+                        append(monthName.first())
+                        for (i in 1..monthName.lastIndex) {
+                            append(monthName[i].lowercaseChar())
+                        }
+                    }
+                )
+                .date(
+                    idOrName = PAYMENT_DATE_KEY,
+                    date = DateOrDateRange(
+                        start = NotionDate(
+                            timestamp = calendar.time
+                        )
+                    )
+                )
+        )
+    }
+
+    private fun TextHandlerEnvironment.prepareData(): Validated<String, Pair<String, String>> = text
+        .trim()
+        .removePunctuation()
+        .split(" ")
+        .run {
+            if (isEmpty() || size == 1) {
+                Invalid("Неправильный формат записи. Указали имя и сумму через пробел?")
+            } else {
+                Valid(
+                    take(lastIndex)
+                        .reduce(operation = { acc, it -> "$acc $it " })
+                        .trim() to last()
+                )
             }
-            .options
-        println(foo)
+        }
+
+    private class Expense private constructor(
+        val name: String,
+        val messageId: Long,
+        val type: String,
+        val amount: Double
+    ) {
+
+        class Builder {
+
+            private var messageId: Long? = null
+            private var name: String? = null
+            private var amount: Double? = null
+            private var type: String? = null
+
+            fun getMessageId() = requireNotNull(messageId)
+
+            fun addName(name: String) = apply {
+                this.name = name
+            }
+
+            fun addMessageId(id: Long) = apply {
+                this.messageId = id
+            }
+
+            fun addAmount(amount: Double) = apply {
+                this.amount = amount
+            }
+
+            fun addType(type: String) = apply {
+                this.type = type
+            }
+
+            fun build() = Expense(
+                name = requireNotNull(name),
+                messageId = requireNotNull(messageId),
+                type = requireNotNull(type),
+                amount = requireNotNull(amount),
+            )
+        }
     }
 }

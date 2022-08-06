@@ -25,6 +25,7 @@ import org.jraf.klibnotion.model.richtext.RichTextList
 import org.slf4j.LoggerFactory
 import regular_expenses.UpdateCurrenciesRateUseCase
 import regular_expenses.UpdateRegularExpensesUseCase
+import java.util.*
 
 val dotEnv = dotenv {
     ignoreIfMissing = true
@@ -57,6 +58,10 @@ val xmlMapper by lazy {
     }
 }
 val logger by lazy { LoggerFactory.getLogger("Main") }
+val currentMonth = Calendar.getInstance().get(Calendar.MONTH)
+val calendar: Calendar = Calendar.getInstance()
+val EXPENSES_DB by lazy { dotEnv.requireVariable(EXPENSES_DATABASE_KEY) }
+
 private val updateCurrenciesRateUseCase by lazy { UpdateCurrenciesRateUseCase() }
 private val updateRegularExpensesUseCase by lazy { UpdateRegularExpensesUseCase() }
 private val clearTrainingListsInteractor by lazy { ClearTrainingListsInteractor() }
@@ -64,7 +69,10 @@ private val clearTrainingListsInteractor by lazy { ClearTrainingListsInteractor(
 suspend fun main(): Unit = runBlocking {
     val port = System.getenv("PORT")?.toInt() ?: 23567
     GroceriesBot().startPolling()
-    ExpensesBot().startPolling()
+    val expensesDb = notionClient
+        .databases
+        .getDatabase(EXPENSES_DB)
+    ExpensesBot(expensesDb).startPolling()
     embeddedServer(Netty, port = port) {
         configureNotionRouting()
     }.start(wait = true)

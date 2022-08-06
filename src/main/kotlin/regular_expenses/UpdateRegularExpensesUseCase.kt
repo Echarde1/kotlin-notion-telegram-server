@@ -2,6 +2,7 @@ package regular_expenses
 
 import EXPENSES_DATABASE_KEY
 import REGULAR_EXPENSES_DATABASE_KEY
+import currentMonth
 import dotEnv
 import io.ktor.application.*
 import io.ktor.response.*
@@ -14,9 +15,6 @@ import org.jraf.klibnotion.model.property.value.DatePropertyValue
 import org.jraf.klibnotion.model.property.value.PropertyValueList
 import requireVariable
 import java.util.*
-
-val currentMonth = Calendar.getInstance().get(Calendar.MONTH)
-val calendar: Calendar = Calendar.getInstance()
 
 class UpdateRegularExpensesUseCase {
 

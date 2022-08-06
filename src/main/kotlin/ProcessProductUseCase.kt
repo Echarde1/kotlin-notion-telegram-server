@@ -179,8 +179,6 @@ class ProcessProductUseCase {
         )
     }
 
-    private fun String.removePunctuation() = replace(Regex("[,!?\\\\-]"), "")
-
     private fun TextHandlerEnvironment.produceMessage(textToSend: String) {
         bot.sendMessage(
             chatId = ChatId.fromId(message.chat.id),
