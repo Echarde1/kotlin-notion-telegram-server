@@ -35,14 +35,14 @@ import runBlockingIO
 import org.jraf.klibnotion.model.date.Date as NotionDate
 
 class ExpensesBot(private val expensesDb: Database) {
-    private val expensesTypes: List<String> = expensesDb
+    private val expensesTypes: List<ExpensesType> = expensesDb
         .propertySpecs
         .filterIsInstance<SelectPropertySpec>()
         .first {
             it.name == EXPENSES_TYPE_KEY
         }
         .options
-        .map { it.name }
+        .map { selectOption -> ExpensesType(selectOption.id, selectOption.name) }
 
     private val botToken by lazy { dotEnv.requireVariable(EXPENSES_TELEGRAM_BOT_TOKEN_KEY) }
     private val expensesBuilders = mutableListOf<Expense.Builder>()
@@ -98,10 +98,10 @@ class ExpensesBot(private val expensesDb: Database) {
 
     private fun createInlineKeyboard(): InlineKeyboardMarkup {
         val buttons = expensesTypes
-            .map { s ->
+            .map { (typeId, typeName) ->
                 InlineKeyboardButton.CallbackData(
-                    text = s,
-                    callbackData = s
+                    text = typeName,
+                    callbackData = typeId
                 )
             }
 
@@ -114,7 +114,7 @@ class ExpensesBot(private val expensesDb: Database) {
     }
 
     private fun Dispatcher.addCallbackQueries() {
-        expensesTypes.forEach { type ->
+        expensesTypes.forEach { (typeId, typeName) ->
             fun Bot.onError(chatId: Long) {
                 sendMessage(
                     chatId = ChatId.fromId(chatId),
@@ -122,7 +122,7 @@ class ExpensesBot(private val expensesDb: Database) {
                 )
             }
 
-            callbackQuery(type) {
+            callbackQuery(typeId) {
                 val chatId: Long? = callbackQuery.message?.chat?.id
                 val messageId: Long? = callbackQuery.message?.messageId
                 if (chatId == null || messageId == null) {
@@ -132,16 +132,16 @@ class ExpensesBot(private val expensesDb: Database) {
 
                 val expense: Expense = expensesBuilders
                     .first { it.getMessageId() == callbackQuery.message?.messageId }
-                    .addType(type)
+                    .addType(typeName)
                     .build()
                 runCatching {
-                    createNotionPage(expense, type)
+                    createNotionPage(expense, typeName)
                 }.fold(
                     onSuccess = {
                         bot.editMessageText(
                             chatId = ChatId.fromId(chatId),
                             messageId = messageId,
-                            text = "Добавили запись в табличку по ${expense.name} с типом $type и суммой ${expense.amount}",
+                            text = "Добавили запись в табличку по ${expense.name} с типом $typeName и суммой ${expense.amount}",
                             replyMarkup = null
                         ).fold(
                             response = {
@@ -220,6 +220,8 @@ class ExpensesBot(private val expensesDb: Database) {
                 )
             }
         }
+
+    private data class ExpensesType(val id: String, val typeName: String)
 
     private class Expense private constructor(
         val name: String,
